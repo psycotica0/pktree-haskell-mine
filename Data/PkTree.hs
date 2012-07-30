@@ -20,6 +20,8 @@ insert_node :: (Divisible zone, Betweenable zone) => (PkTree zone payload) -> (P
 insert_node tree config node =
 
 -- If it's contained by one of my children, then recursively insert it there
+-- Elseif it's instantiable, insert it as one of my children
+-- Else insert its children as my children, not checking containment
 	find (\point -> ((pk_zone.rootLabel) tree) `subset` point) (map (pk_zone.rootLabel) (subForest tree))
 	-- This gives us either the child that contains it, or Nothing.
 	-- In Nothing we insert it into the subForest
@@ -53,10 +55,20 @@ insert_node tree config node =
 	-- I seem to recall from another thing that running == on trees blows because it recurses.
 	-- If that's the case, then I should make replace into something that needs a PkTree and does == on the zone it holds.
 	-- That's really what I want anyway...
--- Elseif it's instantiable, insert it as one of my children
--- Else insert its children as my children, not checking containment
 -- If I have fewer than K children, return a NonInstantiable node and be done
+	fewer_than_k tree k | (length $ subForest tree) < k = Node (NonInstantiable (pk_zone tree)) (subForest tree)
+	fewer_than_k tree _ = the_rest_of_the_stuff tree
 -- Make a list of my subdivisions as PkTrees
+	map (\zone -> Node (NonInstantiable zone) []) $ ((pk_zone.rootLabel) tree) `divide_zone_by` (config_r config)
 -- Insert each of my children into one of the subdivisions using insert_node as a new list of children.
+	-- Looks like this could use the find a match and replace it think I had up there. Or, the maybe_insert.
+	-- Which ever method I used to either insert something into the list if the point contained it should go here too.
+	-- I'll put it in a fold, me thinks, and interate over all children, maintaining this list of subdivision children.
 -- Go through each of these children and, for any NonInstantiable child, add its children as my children
+	-- I'm thinking here I can just have a list of subdivisions, which I get out of the last step
+	-- Then I fold over them again with something like this:
+	only_instantiable (Node (NonInstantiable _) children) acc = children ++ acc
+	only_instantiable node acc = node:acc
 -- If I have fewer than K chikldren, return a NonInstantiable node and be done
+	fewer_than_k_again tree k | (length $ subForest tree) < k = Node (NonInstantiable (pk_zone tree)) (subForest tree)
+	fewer_than_k_again tree _ = Node (Instantiable (pk_zone tree)) (subForest tree)
