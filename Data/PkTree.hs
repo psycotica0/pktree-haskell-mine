@@ -4,7 +4,7 @@ import Data.Zone
 import Data.Divisible
 import Data.Betweenable
 import Data.Offsetable
-import qualified Data.List as List -- List.find
+import qualified Data.List as List (find)
 
 data PkNode zone payload = Instantiable {pk_zone :: (Zone zone)} | NonInstantiable {pk_zone :: (Zone zone)} | Leaf {pk_zone :: (Zone zone), payload :: payload} deriving (Show, Eq)
 
