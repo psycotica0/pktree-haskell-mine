@@ -13,7 +13,7 @@ data PkConfiguration zone = PkConfiguration {config_k :: Int, config_r :: zone} 
 
 node_zone = pk_zone.rootLabel
 
-empty_tree :: (Zone a) -> PkTree a Int
+empty_tree :: (Zone a) -> PkTree a b
 empty_tree zone = Node (NonInstantiable zone) []
 
 insert :: (Divisible zone, Betweenable zone, Eq zone) => (PkTree zone payload) -> (PkConfiguration zone) -> (Zone zone) -> payload -> (PkTree zone payload)
@@ -39,7 +39,11 @@ insert_into_children func config children input = insert_or_not $ List.find (\ch
 
 
 insert_node :: (Divisible zone, Betweenable zone, Eq zone) => (PkTree zone payload) -> (PkConfiguration zone) -> (PkTree zone payload) -> (PkTree zone payload)
-insert_node (Node pknode children) config node = Node pknode $ insert_into_children check_instantiable config children node
+insert_node (Node pknode children) config node = are_we_done $ insert_into_children check_instantiable config children node
+	where
+	are_we_done children | (length children) < (config_k config) = Node (NonInstantiable (pk_zone pknode)) children
+	are_we_done children = check_subdivisions children
+	check_subdivisions children = Node (Instantiable (pk_zone pknode)) children
 
 ---- If it's contained by one of my children, then recursively insert it there
 ---- Elseif it's instantiable, insert it as one of my children
