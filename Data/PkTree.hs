@@ -18,7 +18,7 @@ empty_tree :: (Zone a) -> PkTree a b
 empty_tree zone = Node (NonInstantiable zone) []
 
 insert :: (Divisible point, Betweenable point, Eq point, Offsetable point) => (PkTree point payload) -> (PkConfiguration point) -> point -> payload -> (PkTree point payload)
-insert tree config zone payload = insert_zone tree config (Zone zone zone) payload
+insert tree config point payload = insert_zone tree config (Zone point point) payload
 
 insert_zone :: (Divisible zone, Betweenable zone, Eq zone, Offsetable zone) => (PkTree zone payload) -> (PkConfiguration zone) -> (Zone zone) -> payload -> (PkTree zone payload)
 insert_zone tree config zone payload = insert_node tree config (Node (Leaf zone payload) [])
