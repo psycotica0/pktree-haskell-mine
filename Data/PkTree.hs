@@ -16,8 +16,11 @@ node_zone = pk_zone.rootLabel
 empty_tree :: (Zone a) -> PkTree a b
 empty_tree zone = Node (NonInstantiable zone) []
 
-insert :: (Divisible zone, Betweenable zone, Eq zone) => (PkTree zone payload) -> (PkConfiguration zone) -> (Zone zone) -> payload -> (PkTree zone payload)
-insert tree config zone payload = insert_node tree config (Node (Leaf zone payload) [])
+insert :: (Divisible point, Betweenable point, Eq point) => (PkTree point payload) -> (PkConfiguration point) -> point -> payload -> (PkTree point payload)
+insert tree config zone payload = insert_zone tree config (Zone zone zone) payload
+
+insert_zone :: (Divisible zone, Betweenable zone, Eq zone) => (PkTree zone payload) -> (PkConfiguration zone) -> (Zone zone) -> payload -> (PkTree zone payload)
+insert_zone tree config zone payload = insert_node tree config (Node (Leaf zone payload) [])
 
 -- This function returns the input node as the only item in the list if it's instantiable, or its children if it's not.
 -- This is so I can just wrap results in this and do ((check_instantiable result) ++ children) and then I don't have NonInstantiable children.
