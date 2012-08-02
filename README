@@ -1,0 +1,30 @@
+This is an implementation of the PK-Tree Spatial Index in Haskell.
+
+The algorithm is based off the paper from 1997-11-03 called "PK-tree: A Dynamic Spatial Index Structure for Large Data Sets" by Wei Wang, Jiong Yang, and Richard Muntz.
+
+http://github.com/singpolyma/pktree-haskell also has an implementation, but as of the time of this writing it had some drawbacks.
+Rather than fix those, I wrote my own thing because that's how I roll.
+
+Currently this is a work-in-progress and only does insert.
+I haven't even verified that it does that properly.
+So... caveat emptor.
+
+The main advantage of this one is that I've tried to use typeclasses to keep it generic.
+So, the data you use as an index needs a few features to use this:
+Divisible: You need to be able to divide data of this type up into other items of this type.
+	This is just the way the algorithm works, and is unavoidable.
+Betweenable: You need to be able to tell if an item of this type is between two others
+Offsetable: You need to be able to use one item of this type to adjust the "position" of another
+	I use this in the way I divide a zone (Essentially (((upper - lower) / divisor) + lower))
+	I suppose I don't really need it... but if I didn't then I'd need to implement other stuff elsewhere to actract that out.
+
+If you've got some type that implements those functions, then you can use it as an index.
+The payload on the leaf nodes is just "a", so it can be anything.
+
+If one is interested in making a type to use as an index, look in the definitions of those typeclasses to see what I did for the basic ones.
+
+One thing to note, look in test.hs.
+Likely all the more battle-hardened Haskellers knew this already, but I got caught on it for longer than I'd like...
+If you're not doing something super useful with the data, it can complain about ambiguous types.
+It confused me for a while before I finally realized it wanted me, at some point in my use of the tree, to tell it what kind of tree I'm using it as.
+Like, (PkTree (Int, Int) [Char]), for example.
