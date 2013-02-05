@@ -1,10 +1,12 @@
-module Data.PkTree where
-import Data.Tree
-import Data.Zone
-import Data.Divisible
-import Data.Betweenable
-import Data.Offsetable
-import qualified Data.List as List (find)
+module Data.PkTree (PkTree, empty,
+	insert, delete, move,
+	lookup_zone, find_nearest,
+	) where
+import Data.Tree (Tree(Node), rootLabel)
+import Data.Zone (Zone(Zone), subset, contains, divide_zone_by)
+import Data.Divisible (Divisible)
+import Data.Betweenable (Betweenable)
+import Data.Offsetable (Offsetable)
 
 import Data.Bool.HT (if')
 import Data.List (partition)
@@ -22,8 +24,8 @@ type PkTree zone payload = Tree (PkNode zone payload)
 
 node_zone = pk_zone.rootLabel
 
-empty_tree :: (Zone a) -> PkTree a b
-empty_tree zone = Node (NonInstantiable zone) []
+empty :: (Zone a) -> PkTree a b
+empty zone = Node (NonInstantiable zone) []
 
 insert :: (Offsetable point, Divisible point, Eq point, Betweenable point) => Int -> point -> point -> payload -> PkTree point payload -> PkTree point payload
 insert k r point payload = alter k r (const $ Just payload) point
