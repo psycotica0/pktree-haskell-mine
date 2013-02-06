@@ -1,4 +1,8 @@
-module Data.Offsetable where
+module Data.Offsetable (Offsetable, (*+*), (*-*), with_offset) where
+
+-- This function takes a function that goes from (a -> a) and an offset and produces a function that performs the operation with the offset
+with_offset :: (Offsetable a) => (a -> a) -> a -> a -> a
+with_offset func offset value = (func $ value *-* offset) *+* offset
 
 class Offsetable a where
 	-- I don't need all the crap that Num gives us, and overloading things into num feels bad...
