@@ -1,23 +1,24 @@
-module Data.Zone where
-import Data.Divisible
-import Data.Offsetable
-import Data.Betweenable
+module Data.Zone (Zone(Zone), divide_zone_by, contains, subset, intersect) where
+
+import Data.Divisible (Divisible, divide_into_lower, divide_into_upper)
+import Data.Offsetable (Offsetable, (*+*), (*-*))
+import Data.Betweenable (Betweenable, overlap, within, contained_by, overlap_exclusive, dimensions)
 
 import Data.Set (size, unions)
 
-data Zone a = Zone {lower_bound :: a, upper_bound :: a} deriving (Show, Read, Eq)
+data Zone a = Zone a a deriving (Show, Read, Eq)
 
 divide_zone_by :: (Divisible a, Offsetable a) => Zone a -> a -> [Zone a]
-zone `divide_zone_by` a = zipWith Zone lowers uppers
+divide_zone_by (Zone low high) divisor = zipWith Zone lowers uppers
 	where
-	lowers = offset_func ((flip divide_into_lower) a)
-	uppers = offset_func ((flip divide_into_upper) a)
-	offset_func f = map (*+* (lower_bound zone)) $ f ((upper_bound zone) *-* (lower_bound zone))
+	lowers = division divide_into_lower
+	uppers = division divide_into_upper
+	division func = map (*+* low) $ func (high *-* low) divisor
 
 contains :: (Betweenable a, Eq a) => Zone a -> a -> Bool
 -- I've had to add a special case so that (Zone 3 3) is seen to contain 3.
-(Zone a b) `contains` c | a == b && b == c = True
-zone `contains` value = within (lower_bound zone) value (upper_bound zone)
+contains (Zone low high) point | low == high && high == point = True
+contains (Zone low high) point = within low point high
 
 -- Subset uses within for the lower bound and contained_by for the upper bound
 -- This is to get the desired properties on a few different cases:
@@ -31,8 +32,8 @@ zone `contains` value = within (lower_bound zone) value (upper_bound zone)
 -- Anyway, this is what I want.
 subset :: (Betweenable a, Eq a) => (Zone a) -> (Zone a) -> Bool
 -- I encode equality specifically both to make it obvious, but also because (Zone 3 4) (Zone 3 4) works without it, but (Zone 3 3) (Zone 3 3) did not
-big_zone `subset` small_zone | big_zone == small_zone = True
-big_zone `subset` small_zone = (within (lower_bound big_zone) (lower_bound small_zone) (upper_bound big_zone)) && (contained_by (lower_bound big_zone) (upper_bound small_zone) (upper_bound big_zone))
+subset big_zone small_zone | big_zone == small_zone = True
+subset (Zone bl bu) (Zone sl su) = and [within bl sl bu, contained_by bl su bu]
 
 -- This function returns True if two zones intersect
 -- Two zones are considered to intersect iff every dimension has overlap
