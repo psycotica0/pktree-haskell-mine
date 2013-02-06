@@ -1,4 +1,10 @@
-module Data.Betweenable where
+module Data.Betweenable (
+	Betweenable,
+	ord_overlap, ord_overlap_inclusive, ord_overlap_exclusive,
+	within, contained_by,
+	dimensions,
+	overlap, overlap_inclusive, overlap_exclusive,
+	) where
 
 import Data.Set (Set, union, empty, singleton, mapMonotonic, size)
 import Data.Bool.HT (if')
