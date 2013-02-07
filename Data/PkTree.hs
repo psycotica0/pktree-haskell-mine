@@ -2,14 +2,17 @@ module Data.PkTree (PkTree, empty,
 	insert, delete, move,
 	lookup_zone, find_nearest,
 	) where
+
 import Data.Tree (Tree(Node), rootLabel)
-import Data.Zone (Zone(Zone), subset, contains, divide_zone_by)
+import Data.Bool.HT (if')
+import Data.List (partition, sortBy)
+import Data.Function (on)
+import Data.Foldable (foldl')
+
+import Data.Zone (Zone(Zone), subset, contains, divide_zone_by, intersect)
 import Data.Divisible (Divisible)
 import Data.Betweenable (Betweenable)
 import Data.Offsetable (Offsetable)
-
-import Data.Bool.HT (if')
-import Data.List (partition)
 
 unless c = flip $ if' c
 
@@ -34,20 +37,57 @@ delete :: (Offsetable point, Divisible point, Eq point, Betweenable point) => In
 delete k r = alter k r (const Nothing)
 
 -- This function is just a convenience around fetching a key, then if it exists removing it, and adding it elsewhere
-move :: (Offsetable point, Divisible point, Eq point, Betweenable point) => Int -> point -> point -> PkTree point payload -> PkTree point payload
-move = undefined
+move :: (Offsetable point, Divisible point, Eq point, Betweenable point) => Int -> point -> point -> point -> PkTree point payload -> PkTree point payload
+move k r old_point new_point tree = maybe tree actual_move $ lookup_point old_point tree
+	where
+	actual_move value = insert k r new_point value $ delete k r old_point tree
+
+-- This function looks up a given point, and returns either the payload there or nothing
+lookup_point :: (Eq point, Betweenable point) => point -> PkTree point payload -> Maybe payload
+lookup_point point tree = handle $ lookup_zone (Zone point point) tree
+	where
+	-- I've been overly explicit here because I want it to explode if it returns more than one item
+	handle (point:[]) = Just point
+	handle [] = Nothing
 
 -- This function returns the payloads of every item in the zone
-lookup_zone :: Zone point -> PkTree point payload -> [payload]
-lookup_zone = undefined
+lookup_zone :: (Eq point, Betweenable point) => Zone point -> PkTree point payload -> [payload]
+lookup_zone zone (Node _ children) = concatMap zone_concat $ filter ((intersect zone).node_zone) children
+	where
+	zone_concat (Node (Leaf _ payload) []) = [payload]
+	zone_concat node = lookup_zone zone node
 
 -- This function finds the nearest points to the given point, using the given function to compute distance
 -- It returns a tuple containing the smallest distance, and a list of all the payloads that distance from the point
 -- If the type for distance doesn't reliably support Eq, like floating point numbers, then there will likely be only one item in the return list
 -- That one will be the one with the smallest distance
 -- If, though, the distance function computes manhattan distance or something, and returns an Int, then if more than one has the smallest, then they will all be returned
-find_nearest :: (Ord distance) => (point -> Zone point -> distance) -> point -> PkTree point payload -> (distance, [payload])
-find_nearest = undefined
+-- Important: The distance function here isn't to some sort of "centre". It's the smallest distance of any point in the zone to the point of interest.
+find_nearest :: (Ord distance, Eq distance) => (point -> Zone point -> distance) -> point -> PkTree point payload -> Maybe (distance, [payload])
+find_nearest d_func point node = kernel d_func point id node
+	where
+	-- This is the core logic of the function. It has a parameter to filter by so I can use the same logic to write it with a max bound
+	kernel d_func point filter_func (Node _ children) = foldl' iterator Nothing $ d_sort $ filter_func $ fmap get_distance children
+	-- This one is the same, but truncates.
+	-- It's used for recursion, to not both checking children in a zone that we already know aren't the closest from above
+	nearest_with_max d_func point max node = kernel d_func point (filter (\(d, _) -> d <= max)) node
+	-- This function compares the current child to the current closest child
+	iterator Nothing (d, (Node (Leaf _ payload) [])) = Just $ (d, [payload])
+	iterator Nothing (_, node) = find_nearest d_func point node
+	iterator (Just (d1, _)) (d2, (Node (Leaf _ payload) [])) | d2 < d1 = Just $ (d2, [payload])
+	iterator (Just (d1, p1)) (d2, (Node (Leaf _ payload) [])) | d2 == d1 = Just $ (d1, payload:p1)
+	iterator acc@(Just (d1, p1)) (d2, node) | d2 <= d1 = handle_nearest acc $ nearest_with_max d_func point d1 node
+	iterator acc _ = acc
+	-- This is a sub-function for iterator.
+	-- It handles the result of the recursive case
+	-- I know that it returns nothing if nothing is <= the acc, so if it's not <, then it's ==
+	handle_nearest acc Nothing = acc
+	handle_nearest (Just (d1, _)) new@(Just (d2, _)) | d2 < d1 = new
+	handle_nearest (Just (d1, p1)) (Just (d2, p2)) = Just (d1, p1 ++ p2)
+	-- For sorting children by distance
+	d_sort = sortBy (compare `on` fst)
+	-- This function annotates each child with its distance
+	get_distance child = (d_func point $ node_zone child, child)
 
 -- This function returns the input node as the only item in the list if it's instantiable, or its children if it's not.
 -- This is so I can just wrap results in this and do ((check_instantiable result) ++ children) and then I don't have NonInstantiable children.
