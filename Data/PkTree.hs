@@ -1,6 +1,6 @@
 module Data.PkTree (PkTree, empty,
 	insert, delete, move,
-	lookup_zone, find_nearest,
+	lookup_point, lookup_zone, find_nearest,
 	) where
 
 import Data.Tree (Tree(Node), rootLabel)
