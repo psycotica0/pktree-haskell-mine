@@ -17,8 +17,7 @@ divide_zone_by (Zone low high) divisor = zipWith Zone lowers uppers
 
 contains :: (Betweenable a, Eq a) => Zone a -> a -> Bool
 -- I've had to add a special case so that (Zone 3 3) is seen to contain 3.
-contains (Zone low high) point | low == high && high == point = True
-contains (Zone low high) point = within low point high
+contains (Zone low high) point = or [and [low == high, high == point], within low point high]
 
 -- Subset uses within for the lower bound and contained_by for the upper bound
 -- This is to get the desired properties on a few different cases:
@@ -32,8 +31,7 @@ contains (Zone low high) point = within low point high
 -- Anyway, this is what I want.
 subset :: (Betweenable a, Eq a) => (Zone a) -> (Zone a) -> Bool
 -- I encode equality specifically both to make it obvious, but also because (Zone 3 4) (Zone 3 4) works without it, but (Zone 3 3) (Zone 3 3) did not
-subset big_zone small_zone | big_zone == small_zone = True
-subset (Zone bl bu) (Zone sl su) = and [within bl sl bu, contained_by bl su bu]
+subset bz@(Zone bl bu) sz@(Zone sl su) = or [bz == sz, and [within bl sl bu, contained_by bl su bu]]
 
 -- This function returns True if two zones intersect
 -- Two zones are considered to intersect iff every dimension has overlap
@@ -42,7 +40,6 @@ subset (Zone bl bu) (Zone sl su) = and [within bl sl bu, contained_by bl su bu]
 -- That's because zones in this system are in general inclusive in the lower end and exclusive in the upper
 intersect :: (Betweenable a, Eq a) => (Zone a) -> (Zone a) -> Bool
 -- See the comments for subset's equality case
-intersect zone1 zone2 | zone1 == zone2 = True
-intersect (Zone lower1 upper1) (Zone lower2 upper2) = (dimensions lower1) == (size dims)
+intersect zone1@(Zone lower1 upper1) zone2@(Zone lower2 upper2) = or [zone1 == zone2, (dimensions lower1) == (size dims)]
 	where
 	dims = unions [overlap lower1 lower2 upper1, overlap lower2 lower1 upper2, overlap_exclusive lower1 upper2 upper1, overlap_exclusive lower2 upper1 upper2]
