@@ -1,19 +1,17 @@
-module Data.Zone (Zone(Zone), divide_zone_by, contains, subset, intersect) where
+module Data.Zone (
+	Zone(Zone), contains, subset, intersect,
+	Divisible, divide_zone_by,
+	integral_divide_zone_by, fractional_divide_zone_by, enum_divide_zone_by,
+	) where
 
-import Data.Divisible (Divisible, divide_into_lower, divide_into_upper)
-import Data.Offsetable (Offsetable, (*+*), (*-*))
 import Data.Betweenable (Betweenable, overlap, within, contained_by, overlap_exclusive, dimensions)
 
 import Data.Set (size, unions)
+import Data.Traversable (mapAccumL)
+import Data.List (scanl)
+import Control.Applicative ((<$>), (<*>))
 
 data Zone a = Zone a a deriving (Show, Read, Eq)
-
-divide_zone_by :: (Divisible a, Offsetable a) => Zone a -> a -> [Zone a]
-divide_zone_by (Zone low high) divisor = zipWith Zone lowers uppers
-	where
-	lowers = division divide_into_lower
-	uppers = division divide_into_upper
-	division func = map (*+* low) $ func (high *-* low) divisor
 
 contains :: (Betweenable a, Eq a) => Zone a -> a -> Bool
 -- I've had to add a special case so that (Zone 3 3) is seen to contain 3.
@@ -43,3 +41,35 @@ intersect :: (Betweenable a, Eq a) => (Zone a) -> (Zone a) -> Bool
 intersect zone1@(Zone lower1 upper1) zone2@(Zone lower2 upper2) = or [zone1 == zone2, (dimensions lower1) == (size dims)]
 	where
 	dims = unions [overlap lower1 lower2 upper1, overlap lower2 lower1 upper2, overlap_exclusive lower1 upper2 upper1, overlap_exclusive lower2 upper1 upper2]
+
+class Divisible a where
+	divide_zone_by :: Zone a -> a -> [Zone a]
+
+fractional_divide_zone_by :: (RealFrac a, Fractional a) => Zone a -> a -> [Zone a]
+fractional_divide_zone_by (Zone l u) d = take d' $ fmap (\l' -> Zone l' $ l' + block_size) $ scanl (+) l $ repeat block_size
+	where
+	d' = truncate d
+	block_size = (u - l) / (fromIntegral d')
+
+instance Divisible Double where
+	divide_zone_by = fractional_divide_zone_by
+
+integral_divide_zone_by :: (Integral a) => Zone a -> a -> [Zone a]
+integral_divide_zone_by (Zone l u) d = snd $ mapAccumL iterator l [d,(d-1)..1]
+	where
+	iterator l' d' = let u' = ((u - l') `div` d') + l' in (u', Zone l' u')
+
+instance Divisible Int where
+	divide_zone_by = integral_divide_zone_by
+
+instance Divisible Integer where
+	divide_zone_by = integral_divide_zone_by
+
+instance (Divisible a, Divisible b) => Divisible (a, b) where
+	divide_zone_by (Zone (la, lb) (ua, ub)) (da, db) = combine <$> (divide_zone_by (Zone la ua) da) <*> (divide_zone_by (Zone lb ub) db)
+		where
+		combine (Zone l1 u1) (Zone l2 u2) = Zone (l1, l2) (u1, u2)
+
+-- So... this is probably the most efficient, but seems kinda dirty...
+enum_divide_zone_by :: (Enum a) => Zone a -> a -> [Zone a]
+enum_divide_zone_by (Zone l u) d = fmap (\(Zone l' u') -> Zone (toEnum l') (toEnum u')) $ integral_divide_zone_by (Zone (fromEnum l) (fromEnum u)) (fromEnum d)

@@ -9,10 +9,8 @@ import Data.List (partition, sortBy)
 import Data.Function (on)
 import Data.Foldable (foldl')
 
-import Data.Zone (Zone(Zone), subset, contains, divide_zone_by, intersect)
-import Data.Divisible (Divisible)
+import Data.Zone (Zone(Zone), Divisible, subset, contains, divide_zone_by, intersect)
 import Data.Betweenable (Betweenable)
-import Data.Offsetable (Offsetable)
 
 unless c = flip $ if' c
 
@@ -30,14 +28,14 @@ node_zone = pk_zone.rootLabel
 empty :: (Zone a) -> PkTree a b
 empty zone = Node (NonInstantiable zone) []
 
-insert :: (Offsetable point, Divisible point, Eq point, Betweenable point) => Int -> point -> point -> payload -> PkTree point payload -> PkTree point payload
+insert :: (Divisible point, Eq point, Betweenable point) => Int -> point -> point -> payload -> PkTree point payload -> PkTree point payload
 insert k r point payload = alter k r (const $ Just payload) point
 
-delete :: (Offsetable point, Divisible point, Eq point, Betweenable point) => Int -> point -> point -> PkTree point payload -> PkTree point payload
+delete :: (Divisible point, Eq point, Betweenable point) => Int -> point -> point -> PkTree point payload -> PkTree point payload
 delete k r = alter k r (const Nothing)
 
 -- This function is just a convenience around fetching a key, then if it exists removing it, and adding it elsewhere
-move :: (Offsetable point, Divisible point, Eq point, Betweenable point) => Int -> point -> point -> point -> PkTree point payload -> PkTree point payload
+move :: (Divisible point, Eq point, Betweenable point) => Int -> point -> point -> point -> PkTree point payload -> PkTree point payload
 move k r old_point new_point tree = maybe tree actual_move $ lookup_point old_point tree
 	where
 	actual_move value = insert k r new_point value $ delete k r old_point tree
@@ -101,7 +99,7 @@ check_instantiable node = [node]
 -- It works similarly to the alter function in Map.
 -- Essentially, given a point, it passes in the value at that point if it exists, or Nothing if it doesn't, to the function provided
 -- If that function returns a payload, it is set at that point, if it returns Nothing then it's deleted (Or left empty if it never existed)
-alter :: (Offsetable point, Divisible point, Eq point, Betweenable point) => Int -> point -> (Maybe payload -> Maybe payload) -> point -> PkTree point payload -> PkTree point payload
+alter :: (Divisible point, Eq point, Betweenable point) => Int -> point -> (Maybe payload -> Maybe payload) -> point -> PkTree point payload -> PkTree point payload
 alter k r func point (Node pknode children) = build_node k r (pk_zone pknode) $ do_func $ partition is_contained children
 	where
 	is_contained child = contains (node_zone child) point
@@ -121,7 +119,7 @@ alter k r func point (Node pknode children) = build_node k r (pk_zone pknode) $ 
 -- It also takes a k and an r and creates subdivisions and tests them, to see if they are instantiable
 -- It also checks itself, and either returns an Instantiable node or a NonInstantiable as necessary
 -- While this node itself may be Instantiable or not, with a steady-state it should be the case that every node under this one should be either Instantiable or Leaf.
-build_node :: (Offsetable point, Divisible point, Eq point, Betweenable point) => Int -> point -> Zone point -> [PkTree point a] -> PkTree point a
+build_node :: (Divisible point, Eq point, Betweenable point) => Int -> point -> Zone point -> [PkTree point a] -> PkTree point a
 build_node k r zone children = unless (length children < k) check_subdivisions $ Node (NonInstantiable zone) children
 	where
 	check_subdivisions = Node ((if' (length children' < k) NonInstantiable Instantiable) zone) children'
